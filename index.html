@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#163c2a" />
+  <title>CatFit Tracker</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+
+  <style>
+    :root{
+      --green:#163c2a;
+      --green-2:#245b42;
+      --mint:#dff7ed;
+      --blue:#cfeeff;
+      --blue-2:#8ed4f8;
+      --cream:#fffdf7;
+      --ink:#24302b;
+      --muted:#718078;
+      --card:#ffffffee;
+      --good:#18864b;
+      --bad:#c43e4f;
+      --line:#dfe8e3;
+      --gold:#d6b765;
+      --shadow:0 14px 36px rgba(20,55,40,.12);
+      --radius:22px;
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      min-height:100vh;
+      color:var(--ink);
+      background:
+        radial-gradient(circle at 14% 8%, rgba(207,238,255,.95), transparent 24rem),
+        radial-gradient(circle at 88% 18%, rgba(36,91,66,.18), transparent 22rem),
+        linear-gradient(160deg,#f8fffc 0%,#eef7f2 42%,#f7fbff 100%);
+      font-family:Inter, ui-rounded, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button,input,select{font:inherit}
+    button{cursor:pointer}
+
+    .app{
+      width:min(100%,760px);
+      margin:0 auto;
+      padding:18px 14px calc(92px + env(safe-area-inset-bottom));
+    }
+
+    .hero{
+      position:relative;
+      overflow:hidden;
+      padding:22px 20px;
+      color:white;
+      border-radius:28px;
+      background:linear-gradient(135deg,var(--green),#265f45);
+      box-shadow:var(--shadow);
+    }
+
+    .hero:before,.hero:after{
+      content:"";
+      position:absolute;
+      border-radius:50%;
+      background:rgba(255,255,255,.09);
+    }
+    .hero:before{width:150px;height:150px;right:-55px;top:-45px}
+    .hero:after{width:90px;height:90px;right:80px;bottom:-52px}
+
+    .hero-row{display:flex;gap:14px;align-items:center;position:relative;z-index:1}
+    .mascot{
+      width:72px;height:72px;flex:0 0 72px;
+      display:grid;place-items:center;
+      border:3px solid rgba(255,255,255,.5);
+      border-radius:50%;
+      background:linear-gradient(145deg,#fff,#dff4ff);
+      box-shadow:0 8px 20px rgba(0,0,0,.15);
+      font-size:40px;
+    }
+    h1{margin:0;font-size:clamp(1.55rem,7vw,2.2rem);line-height:1}
+    .subtitle{margin:8px 0 0;color:#dff7ed;font-size:.95rem}
+    .crest{
+      display:inline-flex;gap:7px;align-items:center;
+      margin-top:12px;padding:7px 11px;
+      border:1px solid rgba(255,255,255,.22);
+      border-radius:999px;background:rgba(255,255,255,.09);
+      font-size:.78rem;
+    }
+
+    .grid{display:grid;gap:14px;margin-top:14px}
+    .card{
+      background:var(--card);
+      border:1px solid rgba(255,255,255,.8);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:17px;
+      backdrop-filter:blur(12px);
+    }
+
+    .section-title{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      margin:0 0 13px;
+    }
+    .section-title h2{margin:0;font-size:1.05rem}
+    .hint{font-size:.8rem;color:var(--muted)}
+
+    .date-wrap{
+      display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end;
+    }
+
+    label{display:block;font-size:.78rem;font-weight:700;color:#4d5c54;margin-bottom:6px}
+    input,select{
+      width:100%;min-height:46px;
+      border:1px solid #d8e3dd;border-radius:14px;
+      background:#fff;padding:11px 12px;color:var(--ink);
+      outline:none;
+    }
+    input:focus,select:focus{border-color:var(--green-2);box-shadow:0 0 0 3px rgba(36,91,66,.11)}
+
+    .metrics-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+    .field{position:relative}
+    .unit{
+      position:absolute;right:11px;bottom:13px;color:var(--muted);font-size:.78rem;pointer-events:none
+    }
+    .field input{padding-right:48px}
+
+    .primary{
+      border:0;border-radius:15px;padding:13px 16px;
+      background:linear-gradient(135deg,var(--green),var(--green-2));
+      color:white;font-weight:800;box-shadow:0 9px 18px rgba(22,60,42,.21);
+    }
+    .primary:active{transform:translateY(1px)}
+    .secondary{
+      border:1px solid #d7e4dd;background:white;color:var(--green);
+      border-radius:13px;padding:10px 12px;font-weight:750;
+    }
+    .icon-btn{
+      width:34px;height:34px;border-radius:11px;border:1px solid #dce7e1;
+      background:#fff;color:var(--green);display:grid;place-items:center;padding:0;
+    }
+    .danger{color:var(--bad)}
+
+    .save-row{display:flex;gap:10px;margin-top:15px}
+    .save-row .primary{flex:1}
+
+    .bmi-box{
+      display:grid;grid-template-columns:auto 1fr;gap:13px;align-items:center;
+      padding:14px;border-radius:18px;background:linear-gradient(135deg,var(--mint),#f4fffb);
+      border:1px solid #d1eee0;
+    }
+    .bmi-number{
+      min-width:76px;text-align:center;padding:11px 9px;border-radius:16px;
+      background:white;color:var(--green);font-size:1.55rem;font-weight:900;
+    }
+    .bmi-copy strong{display:block;margin-bottom:4px}
+    .bmi-copy span{font-size:.86rem;color:#506158}
+    .range-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+    .range-box{padding:12px;border:1px solid var(--line);border-radius:16px;background:#fbfefc}
+    .range-box strong{display:block;font-size:.9rem;margin-bottom:4px}
+    .range-box span{font-size:.8rem;color:var(--muted);line-height:1.35}
+    .range-status{display:inline-block;margin-top:7px;padding:5px 8px;border-radius:999px;font-size:.74rem;font-weight:850}
+    .range-status.good{background:#e1f7e9;color:var(--good)}
+    .range-status.bad{background:#ffe7ea;color:var(--bad)}
+    .range-status.neutral{background:#edf2ef;color:var(--muted)}
+
+    .chart-card{padding:0;overflow:hidden}
+    .chart-head{
+      display:flex;justify-content:space-between;align-items:flex-start;gap:12px;
+      padding:16px 16px 8px;
+    }
+    .chart-title{display:flex;gap:10px;align-items:center}
+    .metric-icon{width:38px;height:38px;border-radius:13px;background:var(--blue);display:grid;place-items:center;font-size:20px}
+    .chart-title h3{margin:0;font-size:1rem}
+    .chart-title small{color:var(--muted)}
+    .progress{
+      text-align:right;font-weight:900;font-size:.98rem
+    }
+    .progress.good{color:var(--good)}
+    .progress.bad{color:var(--bad)}
+    .progress.neutral{color:var(--muted)}
+    canvas{display:block;width:100%;height:220px}
+    .chart-foot{
+      display:flex;justify-content:space-between;gap:10px;
+      border-top:1px solid var(--line);padding:10px 16px 13px;color:var(--muted);font-size:.78rem;
+    }
+
+    .empty{
+      text-align:center;padding:30px 18px;color:var(--muted)
+    }
+    .empty .emoji{font-size:45px;display:block;margin-bottom:9px}
+
+    .history-item{
+      display:grid;grid-template-columns:1fr auto;gap:10px;
+      padding:12px 0;border-bottom:1px solid var(--line)
+    }
+    .history-item:last-child{border-bottom:0}
+    .history-date{font-weight:850}
+    .history-values{margin-top:4px;color:var(--muted);font-size:.82rem;line-height:1.55}
+    .history-actions{display:flex;gap:6px;align-items:start}
+
+    .fab{
+      position:fixed;right:max(18px,calc((100vw - 730px)/2));bottom:calc(18px + env(safe-area-inset-bottom));
+      border:0;border-radius:999px;padding:14px 17px;
+      background:linear-gradient(135deg,#d8f2ff,#fff);
+      color:var(--green);font-weight:900;box-shadow:0 12px 30px rgba(20,55,40,.22);
+      border:2px solid white;z-index:20;
+    }
+
+    dialog{
+      width:min(calc(100% - 24px),520px);
+      border:0;border-radius:24px;padding:0;
+      box-shadow:0 30px 90px rgba(0,0,0,.3);
+    }
+    dialog::backdrop{background:rgba(11,25,19,.58);backdrop-filter:blur(3px)}
+    .modal{padding:19px}
+    .modal h3{margin:0 0 14px}
+    .modal-grid{display:grid;gap:11px}
+    .modal-actions{display:flex;gap:9px;justify-content:flex-end;margin-top:16px}
+    .metric-list{display:grid;gap:9px;margin-top:12px}
+    .metric-row{
+      display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;
+      padding:11px;border:1px solid var(--line);border-radius:15px;background:#fbfefc;
+    }
+    .metric-row strong{display:block}
+    .metric-row small{color:var(--muted)}
+    .row-actions{display:flex;gap:6px}
+
+    .toast{
+      position:fixed;left:50%;bottom:calc(85px + env(safe-area-inset-bottom));
+      transform:translateX(-50%) translateY(18px);
+      opacity:0;pointer-events:none;z-index:50;
+      background:#173d2b;color:white;padding:11px 15px;border-radius:999px;
+      transition:.25s ease;font-weight:750;box-shadow:var(--shadow);white-space:nowrap
+    }
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+    @media (max-width:430px){
+      .metrics-form,.range-grid{grid-template-columns:1fr}
+      .date-wrap{grid-template-columns:1fr}
+      .hero{padding:19px 17px}
+      .mascot{width:62px;height:62px;flex-basis:62px;font-size:34px}
+      .chart-head{align-items:center}
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="hero">
+      <div class="hero-row">
+        <div class="mascot">🐱</div>
+        <div>
+          <h1>CatFit Tracker</h1>
+          <p class="subtitle">Tus avances, ordenados con elegancia felina.</p>
+          <div class="crest">☁️ Cinnamoroll energy · 🐍 Slytherin focus</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="grid">
+      <section class="card">
+        <div class="section-title">
+          <h2>Registro diario</h2>
+          <span class="hint">Puedes ingresar días pasados</span>
+        </div>
+
+        <div class="date-wrap">
+          <div>
+            <label for="recordDate">Fecha</label>
+            <input id="recordDate" type="date" />
+          </div>
+          <button class="secondary" id="todayBtn">Hoy</button>
+        </div>
+
+        <div id="metricsForm" class="metrics-form" style="margin-top:13px"></div>
+
+        <div class="save-row">
+          <button class="primary" id="saveBtn">Guardar registro ✨</button>
+          <button class="secondary" id="clearBtn">Limpiar</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-title">
+          <h2>Estado actual</h2>
+          <button class="icon-btn" id="profileBtn" title="Editar altura">✏️</button>
+        </div>
+        <div class="bmi-box">
+          <div class="bmi-number" id="bmiNumber">–</div>
+          <div class="bmi-copy">
+            <strong id="bmiTitle">IMC pendiente</strong>
+            <span id="bmiMessage">Ingresa tu altura y un registro de peso.</span>
+          </div>
+        </div>
+        <div class="range-grid">
+          <div class="range-box">
+            <strong>🌙 Grasa corporal</strong>
+            <span id="fatRangeText">Completa sexo y edad para ver una referencia.</span>
+            <div id="fatRangeStatus" class="range-status neutral">Sin evaluar</div>
+          </div>
+          <div class="range-box">
+            <strong>💪 Masa muscular</strong>
+            <span id="muscleRangeText">Completa sexo y edad para ver una referencia.</span>
+            <div id="muscleRangeStatus" class="range-status neutral">Sin evaluar</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="charts"></section>
+
+      <section class="card">
+        <div class="section-title">
+          <h2>Respaldo y traslado</h2>
+          <span class="hint">Para cambiar de celular o usar el PC</span>
+        </div>
+        <p class="hint" style="margin:0 0 13px;line-height:1.55">Exporta un archivo con tu perfil, métricas, metas y registros. Guárdalo en Drive, correo o donde prefieras y luego impórtalo en otro dispositivo.</p>
+        <div class="save-row" style="margin-top:0;flex-wrap:wrap">
+          <button class="primary" id="exportBtn" type="button">⬇️ Exportar respaldo</button>
+          <button class="secondary" id="importBtn" type="button">⬆️ Importar respaldo</button>
+          <input id="importFile" type="file" accept="application/json,.json" hidden />
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-title">
+          <h2>Historial</h2>
+          <span class="hint" id="recordCount">0 registros</span>
+        </div>
+        <div id="history"></div>
+      </section>
+    </div>
+  </main>
+
+  <button class="fab" id="metricsBtn">＋ Métrica</button>
+
+  <dialog id="metricsDialog">
+    <div class="modal">
+      <div class="section-title">
+        <h3>Administrar métricas</h3>
+        <button class="icon-btn" data-close="metricsDialog">✕</button>
+      </div>
+      <div id="metricList" class="metric-list"></div>
+      <button class="primary" id="newMetricBtn" style="width:100%;margin-top:14px">Agregar nueva métrica</button>
+    </div>
+  </dialog>
+
+  <dialog id="metricEditorDialog">
+    <form class="modal" id="metricEditorForm">
+      <h3 id="metricEditorTitle">Nueva métrica</h3>
+      <div class="modal-grid">
+        <input type="hidden" id="metricId" />
+        <div>
+          <label for="metricName">Nombre</label>
+          <input id="metricName" required placeholder="Ej: Cadera" />
+        </div>
+        <div>
+          <label for="metricUnit">Unidad</label>
+          <input id="metricUnit" placeholder="Ej: cm, %, kg" />
+        </div>
+        <div>
+          <label for="metricGoal">Meta objetivo</label>
+          <input id="metricGoal" type="number" step="any" required />
+        </div>
+        <div>
+          <label for="metricDirection">¿Qué significa mejorar?</label>
+          <select id="metricDirection">
+            <option value="down">Que el valor disminuya</option>
+            <option value="up">Que el valor aumente</option>
+          </select>
+        </div>
+        <div>
+          <label for="metricIcon">Emoji</label>
+          <input id="metricIcon" maxlength="4" placeholder="📏" />
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="secondary" data-close="metricEditorDialog">Cancelar</button>
+        <button class="primary" type="submit">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="profileDialog">
+    <form class="modal" id="profileForm">
+      <h3>Perfil para calcular IMC</h3>
+      <div class="modal-grid">
+        <div>
+          <label for="heightCm">Altura en centímetros</label>
+          <input id="heightCm" type="number" min="80" max="250" step="0.1" required placeholder="Ej: 176" />
+        </div>
+        <div>
+          <label for="sex">Sexo para rangos corporales</label>
+          <select id="sex" required>
+            <option value="">Seleccionar</option>
+            <option value="female">Mujer</option>
+            <option value="male">Hombre</option>
+          </select>
+        </div>
+        <div>
+          <label for="age">Edad</label>
+          <input id="age" type="number" min="18" max="100" step="1" required placeholder="Ej: 32" />
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="secondary" data-close="profileDialog">Cancelar</button>
+        <button class="primary" type="submit">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast"></div>
+
+<script>
+(() => {
+  const STORE_KEY = "catfit-tracker-v1";
+  const defaultMetrics = [
+    { id:"weight", name:"Peso", unit:"kg", goal:70, direction:"down", icon:"⚖️" },
+    { id:"waist", name:"Cintura", unit:"cm", goal:80, direction:"down", icon:"📏" },
+    { id:"fat", name:"Grasa corporal", unit:"%", goal:25, direction:"down", icon:"🌙" },
+    { id:"muscle", name:"Músculo", unit:"%", goal:35, direction:"up", icon:"💪" }
+  ];
+
+  let state = loadState();
+  let editingRecordDate = null;
+
+  const $ = s => document.querySelector(s);
+  const todayISO = () => {
+    const d = new Date();
+    const local = new Date(d.getTime() - d.getTimezoneOffset()*60000);
+    return local.toISOString().slice(0,10);
+  };
+
+  function loadState(){
+    try{
+      const saved = JSON.parse(localStorage.getItem(STORE_KEY));
+      if(saved && Array.isArray(saved.metrics) && Array.isArray(saved.records)){
+        return { metrics:saved.metrics, records:saved.records, profile:saved.profile || {heightCm:null,sex:"",age:null} };
+      }
+    }catch(e){}
+    return { metrics:structuredClone(defaultMetrics), records:[], profile:{heightCm:null,sex:"",age:null} };
+  }
+
+  function saveState(){
+    localStorage.setItem(STORE_KEY, JSON.stringify(state));
+  }
+
+  function exportBackup(){
+    const payload={
+      app:"CatFit Tracker",
+      version:3,
+      exportedAt:new Date().toISOString(),
+      data:state
+    };
+    const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const link=document.createElement("a");
+    link.href=url;
+    link.download=`catfit-respaldo-${todayISO()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    toast("Respaldo descargado 🐾");
+  }
+
+  function normalizeImportedState(candidate){
+    const raw=candidate?.data || candidate;
+    if(!raw || !Array.isArray(raw.metrics) || !Array.isArray(raw.records)) throw new Error("Formato no válido");
+    const metrics=raw.metrics.filter(m=>m && typeof m.id==="string" && typeof m.name==="string").map(m=>({
+      id:m.id, name:m.name, unit:String(m.unit??""), goal:Number(m.goal),
+      direction:m.direction==="up"?"up":"down", icon:String(m.icon||"📊")
+    })).filter(m=>Number.isFinite(m.goal));
+    if(!metrics.length) throw new Error("El respaldo no contiene métricas válidas");
+    const validIds=new Set(metrics.map(m=>m.id));
+    const records=raw.records.filter(r=>r && /^\d{4}-\d{2}-\d{2}$/.test(r.date) && r.values && typeof r.values==="object").map(r=>{
+      const values={};
+      for(const [id,value] of Object.entries(r.values)){
+        const num=Number(value);
+        if(validIds.has(id) && Number.isFinite(num)) values[id]=num;
+      }
+      return {date:r.date,values};
+    }).sort((a,b)=>a.date.localeCompare(b.date));
+    const profile=raw.profile && typeof raw.profile==="object" ? {
+      heightCm:Number(raw.profile.heightCm)||null,
+      sex:["female","male"].includes(raw.profile.sex)?raw.profile.sex:"",
+      age:Number(raw.profile.age)||null
+    } : {heightCm:null,sex:"",age:null};
+    return {metrics,records,profile};
+  }
+
+  async function importBackup(file){
+    if(!file) return;
+    try{
+      const text=await file.text();
+      const parsed=JSON.parse(text);
+      const imported=normalizeImportedState(parsed);
+      if(!confirm(`Se reemplazarán los datos actuales por ${imported.records.length} registros del respaldo. ¿Continuar?`)) return;
+      state=imported;
+      saveState();
+      $("#recordDate").value=todayISO();
+      renderAll();
+      toast("Respaldo cargado correctamente ✨");
+    }catch(error){
+      console.error(error);
+      alert("No se pudo cargar el respaldo. Revisa que sea un archivo JSON exportado desde CatFit Tracker.");
+    }finally{
+      $("#importFile").value="";
+    }
+  }
+
+  function esc(v=""){
+    return String(v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]));
+  }
+
+  function fmt(n, max=1){
+    if(n === null || n === undefined || Number.isNaN(Number(n))) return "–";
+    return new Intl.NumberFormat("es-CL",{maximumFractionDigits:max}).format(Number(n));
+  }
+
+  function dateLabel(iso){
+    const d = new Date(iso+"T12:00:00");
+    return new Intl.DateTimeFormat("es-CL",{day:"2-digit",month:"short",year:"numeric"}).format(d);
+  }
+
+  function toast(msg){
+    const t=$("#toast"); t.textContent=msg; t.classList.add("show");
+    setTimeout(()=>t.classList.remove("show"),1800);
+  }
+
+  function renderForm(){
+    const box=$("#metricsForm");
+    box.innerHTML=state.metrics.map(m=>`
+      <div class="field">
+        <label for="input-${esc(m.id)}">${esc(m.icon)} ${esc(m.name)}</label>
+        <input id="input-${esc(m.id)}" data-metric="${esc(m.id)}" type="number" step="any" inputmode="decimal" placeholder="Meta: ${esc(m.goal)}" />
+        <span class="unit">${esc(m.unit)}</span>
+      </div>
+    `).join("");
+    loadFormForDate($("#recordDate").value);
+  }
+
+  function loadFormForDate(date){
+    const rec=state.records.find(r=>r.date===date);
+    state.metrics.forEach(m=>{
+      const input=document.querySelector(`[data-metric="${CSS.escape(m.id)}"]`);
+      if(input) input.value=rec?.values?.[m.id] ?? "";
+    });
+    editingRecordDate=rec ? date : null;
+    $("#saveBtn").textContent=rec ? "Actualizar registro ✨" : "Guardar registro ✨";
+  }
+
+  function clearForm(){
+    document.querySelectorAll("[data-metric]").forEach(i=>i.value="");
+    editingRecordDate=null;
+    $("#saveBtn").textContent="Guardar registro ✨";
+  }
+
+  function saveRecord(){
+    const date=$("#recordDate").value;
+    if(!date){ toast("Elige una fecha"); return; }
+
+    const values={};
+    let count=0;
+    document.querySelectorAll("[data-metric]").forEach(i=>{
+      if(i.value!==""){
+        values[i.dataset.metric]=Number(i.value);
+        count++;
+      }
+    });
+    if(!count){ toast("Ingresa al menos un dato"); return; }
+
+    const existing=state.records.findIndex(r=>r.date===date);
+    const merged=existing>=0 ? {...state.records[existing].values,...values} : values;
+    const record={date,values:merged};
+    if(existing>=0) state.records[existing]=record; else state.records.push(record);
+    state.records.sort((a,b)=>a.date.localeCompare(b.date));
+    saveState();
+    editingRecordDate=date;
+    renderAll();
+    toast(existing>=0 ? "Registro actualizado 🐾" : "Registro guardado 🐾");
+  }
+
+  function latestValue(metricId){
+    for(let i=state.records.length-1;i>=0;i--){
+      const value=state.records[i].values?.[metricId];
+      if(value!==undefined && value!==null) return {value:Number(value),date:state.records[i].date};
+    }
+    return null;
+  }
+
+  function firstValue(metricId){
+    for(const r of state.records){
+      const value=r.values?.[metricId];
+      if(value!==undefined && value!==null) return {value:Number(value),date:r.date};
+    }
+    return null;
+  }
+
+  function progressFor(m){
+    const first=firstValue(m.id), latest=latestValue(m.id);
+    if(!first || !latest) return {pct:null,delta:null,status:"neutral"};
+    const total = m.direction==="down" ? first.value-m.goal : m.goal-first.value;
+    const moved = m.direction==="down" ? first.value-latest.value : latest.value-first.value;
+    if(Math.abs(total)<1e-9) return {pct:latest.value===m.goal?100:0,delta:moved,status:moved>=0?"good":"bad"};
+    const pct=(moved/total)*100;
+    return {pct,delta:moved,status:pct>0?"good":pct<0?"bad":"neutral"};
+  }
+
+  function renderBMI(){
+    const height=Number(state.profile.heightCm);
+    const weight=latestValue("weight");
+    const num=$("#bmiNumber"), title=$("#bmiTitle"), msg=$("#bmiMessage");
+    if(!height || !weight){
+      num.textContent="–";
+      title.textContent="IMC pendiente";
+      msg.textContent=!height ? "Toca el lápiz para agregar tu altura." : "Ingresa un registro de peso.";
+      return;
+    }
+    const bmi=weight.value/Math.pow(height/100,2);
+    num.textContent=fmt(bmi,1);
+    if(bmi>24.9){
+      const points=bmi-24.9;
+      title.textContent="Por encima del rango saludable";
+      msg.textContent=`Faltan ${fmt(points,1)} puntos para un IMC saludable. Confío en ti, sigue entrenando.`;
+    }else if(bmi<18.5){
+      const points=18.5-bmi;
+      title.textContent="Por debajo del rango saludable";
+      msg.textContent=`Faltan ${fmt(points,1)} puntos para entrar al rango saludable. Cuida tu proceso con calma.`;
+    }else{
+      title.textContent="IMC en rango saludable";
+      msg.textContent="Vas dentro del rango de referencia. Sigue cuidando tus hábitos.";
+    }
+  }
+
+
+  function compositionRanges(){
+    const sex=state.profile.sex, age=Number(state.profile.age);
+    if(!sex || !age) return null;
+    const fat = sex==="female" ? [21,31] : [14,24];
+    let muscle;
+    if(sex==="male"){
+      if(age<=35) muscle=[40,44];
+      else if(age<=55) muscle=[36,40];
+      else if(age<=75) muscle=[32,35];
+      else muscle=[0,31];
+    }else{
+      if(age<=35) muscle=[31,33];
+      else if(age<=55) muscle=[29,31];
+      else if(age<=75) muscle=[27,30];
+      else muscle=[0,26];
+    }
+    return {fat,muscle};
+  }
+
+  function setRangeStatus(metricId, range, textId, statusId, label){
+    const current=latestValue(metricId);
+    const text=$(textId), status=$(statusId);
+    const low=range[0], high=range[1];
+    text.textContent = low===0 ? `Referencia aproximada: hasta ${high}%.` : `Referencia aproximada: ${low}% a ${high}%.`;
+    status.className="range-status neutral";
+    if(!current){ status.textContent="Sin registro"; return; }
+    const v=current.value;
+    if(v>=low && v<=high){ status.textContent=`En rango · ${fmt(v)}%`; status.className="range-status good"; }
+    else if(v<low){ status.textContent=`Bajo rango · ${fmt(v)}%`; status.className="range-status bad"; }
+    else { status.textContent=`Sobre rango · ${fmt(v)}%`; status.className="range-status bad"; }
+  }
+
+  function renderCompositionRanges(){
+    const ranges=compositionRanges();
+    if(!ranges){
+      $("#fatRangeText").textContent="Completa sexo y edad para ver una referencia.";
+      $("#muscleRangeText").textContent="Completa sexo y edad para ver una referencia.";
+      $("#fatRangeStatus").textContent="Sin evaluar";
+      $("#muscleRangeStatus").textContent="Sin evaluar";
+      $("#fatRangeStatus").className="range-status neutral";
+      $("#muscleRangeStatus").className="range-status neutral";
+      return;
+    }
+    setRangeStatus("fat",ranges.fat,"#fatRangeText","#fatRangeStatus","Grasa");
+    setRangeStatus("muscle",ranges.muscle,"#muscleRangeText","#muscleRangeStatus","Músculo");
+  }
+
+  function renderCharts(){
+    const root=$("#charts");
+    if(!state.records.length){
+      root.innerHTML=`<section class="card empty"><span class="emoji">☁️🐾</span>Aún no hay gráficos. Guarda tu primer registro y aparecerán aquí.</section>`;
+      return;
+    }
+
+    root.innerHTML=state.metrics.map(m=>{
+      const p=progressFor(m);
+      const latest=latestValue(m.id);
+      const progressText=p.pct===null ? "Sin avance aún" : `${p.pct>=0?"+":""}${fmt(p.pct,0)}% de avance`;
+      return `
+        <article class="card chart-card">
+          <div class="chart-head">
+            <div class="chart-title">
+              <div class="metric-icon">${esc(m.icon)}</div>
+              <div><h3>${esc(m.name)}</h3><small>Meta: ${esc(m.goal)} ${esc(m.unit)}</small></div>
+            </div>
+            <div class="progress ${p.status}">${progressText}</div>
+          </div>
+          <canvas data-chart="${esc(m.id)}" aria-label="Gráfico de ${esc(m.name)}"></canvas>
+          <div class="chart-foot">
+            <span>Actual: <strong>${latest?fmt(latest.value):"–"} ${esc(m.unit)}</strong></span>
+            <span>Línea punteada = meta</span>
+          </div>
+        </article>`;
+    }).join("");
+
+    requestAnimationFrame(()=>state.metrics.forEach(m=>{
+      const canvas=document.querySelector(`canvas[data-chart="${CSS.escape(m.id)}"]`);
+      drawChart(canvas,m);
+    }));
+  }
+
+  function drawChart(canvas,m){
+    const points=state.records
+      .filter(r=>r.values?.[m.id]!==undefined)
+      .map(r=>({date:r.date,value:Number(r.values[m.id])}));
+    const dpr=window.devicePixelRatio||1;
+    const rect=canvas.getBoundingClientRect();
+    canvas.width=Math.max(320,rect.width)*dpr;
+    canvas.height=220*dpr;
+    const ctx=canvas.getContext("2d");
+    ctx.scale(dpr,dpr);
+    const w=canvas.width/dpr,h=canvas.height/dpr;
+    ctx.clearRect(0,0,w,h);
+
+    const pad={l:42,r:16,t:18,b:34};
+    const innerW=w-pad.l-pad.r, innerH=h-pad.t-pad.b;
+    if(!points.length){
+      ctx.fillStyle="#718078";ctx.font="14px system-ui";ctx.textAlign="center";
+      ctx.fillText("Sin datos para esta métrica",w/2,h/2);
+      return;
+    }
+
+    const vals=[...points.map(p=>p.value),Number(m.goal)];
+    let min=Math.min(...vals),max=Math.max(...vals);
+    const span=Math.max(max-min,Math.abs(max)*.1,1);
+    min-=span*.18; max+=span*.18;
+
+    const x=i=>points.length===1?pad.l+innerW/2:pad.l+(i/(points.length-1))*innerW;
+    const y=v=>pad.t+((max-v)/(max-min))*innerH;
+
+    ctx.strokeStyle="#e3ebe6";ctx.lineWidth=1;
+    ctx.fillStyle="#718078";ctx.font="11px system-ui";ctx.textAlign="right";
+    for(let i=0;i<4;i++){
+      const val=max-(i/3)*(max-min), yy=y(val);
+      ctx.beginPath();ctx.moveTo(pad.l,yy);ctx.lineTo(w-pad.r,yy);ctx.stroke();
+      ctx.fillText(fmt(val,1),pad.l-7,yy+4);
+    }
+
+    ctx.save();
+    ctx.setLineDash([6,5]);ctx.strokeStyle="#d6b765";ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(pad.l,y(m.goal));ctx.lineTo(w-pad.r,y(m.goal));ctx.stroke();
+    ctx.restore();
+
+    if(points.length>1){
+      ctx.strokeStyle="#245b42";ctx.lineWidth=3;ctx.lineJoin="round";ctx.lineCap="round";
+      ctx.beginPath();
+      points.forEach((p,i)=>i?ctx.lineTo(x(i),y(p.value)):ctx.moveTo(x(i),y(p.value)));
+      ctx.stroke();
+    }
+
+    points.forEach((p,i)=>{
+      ctx.fillStyle="#fff";ctx.strokeStyle="#245b42";ctx.lineWidth=3;
+      ctx.beginPath();ctx.arc(x(i),y(p.value),4.5,0,Math.PI*2);ctx.fill();ctx.stroke();
+    });
+
+    const labels=[0,Math.floor((points.length-1)/2),points.length-1].filter((v,i,a)=>a.indexOf(v)===i);
+    ctx.fillStyle="#718078";ctx.font="10px system-ui";ctx.textAlign="center";
+    labels.forEach(i=>{
+      const d=new Date(points[i].date+"T12:00:00");
+      ctx.fillText(new Intl.DateTimeFormat("es-CL",{day:"2-digit",month:"short"}).format(d),x(i),h-11);
+    });
+  }
+
+  function renderHistory(){
+    const box=$("#history");
+    $("#recordCount").textContent=`${state.records.length} ${state.records.length===1?"registro":"registros"}`;
+    if(!state.records.length){
+      box.innerHTML=`<div class="empty">Tu historial todavía está tomando una siesta gatuna.</div>`;
+      return;
+    }
+    box.innerHTML=[...state.records].reverse().map(r=>{
+      const vals=state.metrics
+        .filter(m=>r.values?.[m.id]!==undefined)
+        .map(m=>`${esc(m.icon)} ${esc(m.name)}: <strong>${fmt(r.values[m.id])} ${esc(m.unit)}</strong>`)
+        .join(" · ");
+      return `<div class="history-item">
+        <div><div class="history-date">${dateLabel(r.date)}</div><div class="history-values">${vals}</div></div>
+        <div class="history-actions">
+          <button class="icon-btn" data-edit-record="${r.date}" title="Editar">✏️</button>
+          <button class="icon-btn danger" data-delete-record="${r.date}" title="Eliminar">🗑️</button>
+        </div>
+      </div>`;
+    }).join("");
+  }
+
+  function renderMetricList(){
+    $("#metricList").innerHTML=state.metrics.map(m=>`
+      <div class="metric-row">
+        <div><strong>${esc(m.icon)} ${esc(m.name)}</strong><small>Meta ${esc(m.goal)} ${esc(m.unit)} · ${m.direction==="down"?"bajar":"subir"}</small></div>
+        <div class="row-actions">
+          <button class="icon-btn" data-edit-metric="${esc(m.id)}">✏️</button>
+          <button class="icon-btn danger" data-delete-metric="${esc(m.id)}">🗑️</button>
+        </div>
+      </div>`).join("");
+  }
+
+  function renderAll(){
+    renderForm();
+    renderBMI();
+    renderCompositionRanges();
+    renderCharts();
+    renderHistory();
+    renderMetricList();
+  }
+
+  function openMetricEditor(id=null){
+    const m=state.metrics.find(x=>x.id===id);
+    $("#metricEditorTitle").textContent=m?"Editar métrica":"Nueva métrica";
+    $("#metricId").value=m?.id||"";
+    $("#metricName").value=m?.name||"";
+    $("#metricUnit").value=m?.unit||"";
+    $("#metricGoal").value=m?.goal??"";
+    $("#metricDirection").value=m?.direction||"down";
+    $("#metricIcon").value=m?.icon||"📊";
+    $("#metricEditorDialog").showModal();
+  }
+
+  function saveMetric(e){
+    e.preventDefault();
+    const oldId=$("#metricId").value;
+    const name=$("#metricName").value.trim();
+    const unit=$("#metricUnit").value.trim();
+    const goal=Number($("#metricGoal").value);
+    const direction=$("#metricDirection").value;
+    const icon=$("#metricIcon").value.trim()||"📊";
+
+    if(oldId){
+      const m=state.metrics.find(x=>x.id===oldId);
+      Object.assign(m,{name,unit,goal,direction,icon});
+    }else{
+      const id="m_"+Date.now().toString(36);
+      state.metrics.push({id,name,unit,goal,direction,icon});
+    }
+    saveState(); $("#metricEditorDialog").close(); renderAll(); toast("Métrica guardada");
+  }
+
+  document.addEventListener("click",e=>{
+    const close=e.target.closest("[data-close]");
+    if(close) document.getElementById(close.dataset.close).close();
+
+    const editMetric=e.target.closest("[data-edit-metric]");
+    if(editMetric) openMetricEditor(editMetric.dataset.editMetric);
+
+    const delMetric=e.target.closest("[data-delete-metric]");
+    if(delMetric){
+      const id=delMetric.dataset.deleteMetric;
+      if(confirm("¿Eliminar esta métrica y sus datos guardados?")){
+        state.metrics=state.metrics.filter(m=>m.id!==id);
+        state.records.forEach(r=>delete r.values[id]);
+        saveState(); renderAll(); toast("Métrica eliminada");
+      }
+    }
+
+    const editRec=e.target.closest("[data-edit-record]");
+    if(editRec){
+      $("#recordDate").value=editRec.dataset.editRecord;
+      loadFormForDate(editRec.dataset.editRecord);
+      window.scrollTo({top:0,behavior:"smooth"});
+    }
+
+    const delRec=e.target.closest("[data-delete-record]");
+    if(delRec && confirm("¿Eliminar este registro?")){
+      state.records=state.records.filter(r=>r.date!==delRec.dataset.deleteRecord);
+      saveState(); renderAll(); toast("Registro eliminado");
+    }
+  });
+
+  $("#recordDate").value=todayISO();
+  $("#recordDate").addEventListener("change",e=>loadFormForDate(e.target.value));
+  $("#todayBtn").addEventListener("click",()=>{$("#recordDate").value=todayISO();loadFormForDate(todayISO())});
+  $("#saveBtn").addEventListener("click",saveRecord);
+  $("#clearBtn").addEventListener("click",clearForm);
+  $("#metricsBtn").addEventListener("click",()=>{$("#metricsDialog").showModal();renderMetricList()});
+  $("#newMetricBtn").addEventListener("click",()=>openMetricEditor());
+  $("#metricEditorForm").addEventListener("submit",saveMetric);
+  $("#profileBtn").addEventListener("click",()=>{
+    $("#heightCm").value=state.profile.heightCm||"";
+    $("#sex").value=state.profile.sex||"";
+    $("#age").value=state.profile.age||"";
+    $("#profileDialog").showModal();
+  });
+  $("#profileForm").addEventListener("submit",e=>{
+    e.preventDefault();
+    state.profile.heightCm=Number($("#heightCm").value);
+    state.profile.sex=$("#sex").value;
+    state.profile.age=Number($("#age").value);
+    saveState(); $("#profileDialog").close(); renderBMI(); renderCompositionRanges(); toast("Perfil guardado");
+  });
+  $("#exportBtn").addEventListener("click",exportBackup);
+  $("#importBtn").addEventListener("click",()=>$("#importFile").click());
+  $("#importFile").addEventListener("change",e=>importBackup(e.target.files?.[0]));
+  window.addEventListener("resize",()=>state.metrics.forEach(m=>{
+    const c=document.querySelector(`canvas[data-chart="${CSS.escape(m.id)}"]`);
+    if(c) drawChart(c,m);
+  }));
+
+  renderAll();
+})();
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js'));
+}
+</script>
+
+</body>
+</html>
