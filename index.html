@@ -5,11 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#163c2a" />
   <title>CatFit Tracker</title>
-  <link rel="manifest" href="manifest.json" />
-  <link rel="apple-touch-icon" href="icon-192.png" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-
+  <!-- versión 4: metas directas y masa muscular en kg -->
   <style>
     :root{
       --green:#163c2a;
@@ -125,6 +121,23 @@
       position:absolute;right:11px;bottom:13px;color:var(--muted);font-size:.78rem;pointer-events:none
     }
     .field input{padding-right:48px}
+    .metric-input-grid{
+      display:grid;
+      grid-template-columns:minmax(0,1fr) minmax(92px,.46fr);
+      gap:8px;
+    }
+    .goal-field{position:relative}
+    .goal-field input{
+      padding-right:38px;
+      background:#f7fbf9;
+      border-style:dashed;
+    }
+    .goal-label{
+      display:flex;
+      align-items:center;
+      gap:5px;
+      color:var(--green-2);
+    }
 
     .primary{
       border:0;border-radius:15px;padding:13px 16px;
@@ -284,7 +297,7 @@
       <section class="card">
         <div class="section-title">
           <h2>Estado actual</h2>
-          <button class="icon-btn" id="profileBtn" title="Editar altura">✏️</button>
+          <button class="icon-btn" id="profileBtn" title="Editar perfil">✏️</button>
         </div>
         <div class="bmi-box">
           <div class="bmi-number" id="bmiNumber">–</div>
@@ -301,8 +314,8 @@
           </div>
           <div class="range-box">
             <strong>💪 Masa muscular</strong>
-            <span id="muscleRangeText">Completa sexo y edad para ver una referencia.</span>
-            <div id="muscleRangeStatus" class="range-status neutral">Sin evaluar</div>
+            <span id="muscleRangeText">Se compara con tu meta personal en kilogramos.</span>
+            <div id="muscleRangeStatus" class="range-status neutral">Sin registro</div>
           </div>
         </div>
       </section>
@@ -418,11 +431,41 @@
     { id:"weight", name:"Peso", unit:"kg", goal:70, direction:"down", icon:"⚖️" },
     { id:"waist", name:"Cintura", unit:"cm", goal:80, direction:"down", icon:"📏" },
     { id:"fat", name:"Grasa corporal", unit:"%", goal:25, direction:"down", icon:"🌙" },
-    { id:"muscle", name:"Músculo", unit:"%", goal:35, direction:"up", icon:"💪" }
+    { id:"muscle", name:"Masa muscular", unit:"kg", goal:30, direction:"up", icon:"💪" }
   ];
 
   let state = loadState();
+  migrateMuscleToKg();
   let editingRecordDate = null;
+
+  function migrateMuscleToKg(){
+    const old = state.metrics.find(m=>m.id==="muscle");
+    if(!old || old.unit!=="%") return;
+
+    const hasOldValues = state.records.some(r=>r.values && r.values.muscle!==undefined);
+    if(hasOldValues){
+      const archivedId="muscle_percent_archive";
+      old.id=archivedId;
+      old.name="Músculo antiguo";
+      old.unit="%";
+      state.records.forEach(r=>{
+        if(r.values && r.values.muscle!==undefined){
+          r.values[archivedId]=r.values.muscle;
+          delete r.values.muscle;
+        }
+      });
+      state.metrics.push({
+        id:"muscle", name:"Masa muscular", unit:"kg",
+        goal:30, direction:"up", icon:"💪"
+      });
+    }else{
+      old.name="Masa muscular";
+      old.unit="kg";
+      old.goal=30;
+      old.direction="up";
+    }
+    saveState();
+  }
 
   const $ = s => document.querySelector(s);
   const todayISO = () => {
@@ -531,10 +574,19 @@
   function renderForm(){
     const box=$("#metricsForm");
     box.innerHTML=state.metrics.map(m=>`
-      <div class="field">
+      <div>
         <label for="input-${esc(m.id)}">${esc(m.icon)} ${esc(m.name)}</label>
-        <input id="input-${esc(m.id)}" data-metric="${esc(m.id)}" type="number" step="any" inputmode="decimal" placeholder="Meta: ${esc(m.goal)}" />
-        <span class="unit">${esc(m.unit)}</span>
+        <div class="metric-input-grid">
+          <div class="field">
+            <input id="input-${esc(m.id)}" data-metric="${esc(m.id)}" type="number" step="any" inputmode="decimal" placeholder="Valor" />
+            <span class="unit">${esc(m.unit)}</span>
+          </div>
+          <div class="goal-field">
+            <label class="goal-label" for="goal-${esc(m.id)}">🎯 Meta</label>
+            <input id="goal-${esc(m.id)}" data-goal="${esc(m.id)}" type="number" step="any" inputmode="decimal" value="${esc(m.goal)}" aria-label="Meta de ${esc(m.name)}" />
+            <span class="unit">${esc(m.unit)}</span>
+          </div>
+        </div>
       </div>
     `).join("");
     loadFormForDate($("#recordDate").value);
@@ -556,7 +608,16 @@
     $("#saveBtn").textContent="Guardar registro ✨";
   }
 
+  function saveVisibleGoals(){
+    document.querySelectorAll("[data-goal]").forEach(input=>{
+      const metric=state.metrics.find(m=>m.id===input.dataset.goal);
+      const value=Number(input.value);
+      if(metric && Number.isFinite(value)) metric.goal=value;
+    });
+  }
+
   function saveRecord(){
+    saveVisibleGoals();
     const date=$("#recordDate").value;
     if(!date){ toast("Elige una fecha"); return; }
 
@@ -637,27 +698,16 @@
   function compositionRanges(){
     const sex=state.profile.sex, age=Number(state.profile.age);
     if(!sex || !age) return null;
+    // Referencia orientativa general de grasa corporal.
     const fat = sex==="female" ? [21,31] : [14,24];
-    let muscle;
-    if(sex==="male"){
-      if(age<=35) muscle=[40,44];
-      else if(age<=55) muscle=[36,40];
-      else if(age<=75) muscle=[32,35];
-      else muscle=[0,31];
-    }else{
-      if(age<=35) muscle=[31,33];
-      else if(age<=55) muscle=[29,31];
-      else if(age<=75) muscle=[27,30];
-      else muscle=[0,26];
-    }
-    return {fat,muscle};
+    return {fat};
   }
 
-  function setRangeStatus(metricId, range, textId, statusId, label){
+  function setRangeStatus(metricId, range, textId, statusId){
     const current=latestValue(metricId);
     const text=$(textId), status=$(statusId);
     const low=range[0], high=range[1];
-    text.textContent = low===0 ? `Referencia aproximada: hasta ${high}%.` : `Referencia aproximada: ${low}% a ${high}%.`;
+    text.textContent = `Referencia orientativa: ${low}% a ${high}%.`;
     status.className="range-status neutral";
     if(!current){ status.textContent="Sin registro"; return; }
     const v=current.value;
@@ -666,19 +716,44 @@
     else { status.textContent=`Sobre rango · ${fmt(v)}%`; status.className="range-status bad"; }
   }
 
+  function renderMuscleGoalStatus(){
+    const metric=state.metrics.find(m=>m.id==="muscle");
+    const current=latestValue("muscle");
+    const text=$("#muscleRangeText"), status=$("#muscleRangeStatus");
+    status.className="range-status neutral";
+    if(!metric){
+      text.textContent="Métrica no disponible.";
+      status.textContent="Sin evaluar";
+      return;
+    }
+    text.textContent=`Tu meta personal es ${fmt(metric.goal)} kg.`;
+    if(!current){
+      status.textContent="Sin registro";
+      return;
+    }
+    const diff=current.value-metric.goal;
+    if(Math.abs(diff)<0.05){
+      status.textContent=`Meta alcanzada · ${fmt(current.value)} kg`;
+      status.className="range-status good";
+    }else if(diff<0){
+      status.textContent=`Faltan ${fmt(Math.abs(diff))} kg · actual ${fmt(current.value)} kg`;
+      status.className="range-status neutral";
+    }else{
+      status.textContent=`Meta superada por ${fmt(diff)} kg · actual ${fmt(current.value)} kg`;
+      status.className="range-status good";
+    }
+  }
+
   function renderCompositionRanges(){
     const ranges=compositionRanges();
     if(!ranges){
       $("#fatRangeText").textContent="Completa sexo y edad para ver una referencia.";
-      $("#muscleRangeText").textContent="Completa sexo y edad para ver una referencia.";
       $("#fatRangeStatus").textContent="Sin evaluar";
-      $("#muscleRangeStatus").textContent="Sin evaluar";
       $("#fatRangeStatus").className="range-status neutral";
-      $("#muscleRangeStatus").className="range-status neutral";
-      return;
+    }else{
+      setRangeStatus("fat",ranges.fat,"#fatRangeText","#fatRangeStatus");
     }
-    setRangeStatus("fat",ranges.fat,"#fatRangeText","#fatRangeStatus","Grasa");
-    setRangeStatus("muscle",ranges.muscle,"#muscleRangeText","#muscleRangeStatus","Músculo");
+    renderMuscleGoalStatus();
   }
 
   function renderCharts(){
@@ -882,6 +957,21 @@
   });
 
   $("#recordDate").value=todayISO();
+  document.addEventListener("change",e=>{
+    const goalInput=e.target.closest("[data-goal]");
+    if(goalInput){
+      const metric=state.metrics.find(m=>m.id===goalInput.dataset.goal);
+      const value=Number(goalInput.value);
+      if(metric && Number.isFinite(value)){
+        metric.goal=value;
+        saveState();
+        renderCharts();
+        renderMetricList();
+        renderCompositionRanges();
+        toast("Meta actualizada 🎯");
+      }
+    }
+  });
   $("#recordDate").addEventListener("change",e=>loadFormForDate(e.target.value));
   $("#todayBtn").addEventListener("click",()=>{$("#recordDate").value=todayISO();loadFormForDate(todayISO())});
   $("#saveBtn").addEventListener("click",saveRecord);
@@ -913,12 +1003,5 @@
   renderAll();
 })();
 </script>
-
-<script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./service-worker.js'));
-}
-</script>
-
 </body>
 </html>
